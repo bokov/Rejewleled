@@ -66,7 +66,6 @@ set.bjw <- function(bjw,id=bjw$selected1,values){
   out;
   };
 
-# TODO:
 swap.bjw <- function(bjw,ident2,ident1=bjw$selected1){
   id2 <- parse_bjw_id(ident2,'id',bjw=bjw);
   id1 <- parse_bjw_id(ident1,'id',bjw=bjw);
