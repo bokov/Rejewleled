@@ -1,16 +1,17 @@
 # functions ----
 
 createBJW <- function(nr=sample(3:8,1),nc=sample(3:8,1)
-                      ,colors=sample(1:4,nr*nc,rep=T)){
-  out <- new.env();
+                      ,colors=sample(1:4,nr*nc,rep=T),reactive=F){
+  out <- if(reactive) reactiveValues() else new.env();
   out$data <- matrix(colors,nr,nc);
   out$selected1 <- c();
+  out$state <- '0sel';
   out$score <- data.frame(length=factor(),type=factor(),Freq=integer(),rc=character());
-  class(out) <- c('bjw','list','environment');
+  if(!reactive) class(out) <- c('bjw','list','environment');
   out;
 }
 
-parse_bjw_id <- function(identifier,retval=c('both','rc','id')
+parse_bjw_id <- function(identifier=bjw$selected1,retval=c('both','rc','id')
                        ,prefix=getOption('bjw.cell.prefix','bjwtd_')
                          ,bjw=NA,rcmax){
   out <- list();
@@ -30,10 +31,30 @@ parse_bjw_id <- function(identifier,retval=c('both','rc','id')
   switch(match.arg(retval),rc=out$rc,id=out$id,out);
 };
 
+get_rc.bjw <- function(bjw){
+  if(is.null(bjw$selected1)) return(NULL);
+  rbind(parse_bjw_id(bjw=bjw,retval='rc'))};
+
 isadjacent_bjw_id <- function(ident2,ident1=bjw$selected1,bjw){
   delta<-abs(parse_bjw_id(ident1,'rc')-parse_bjw_id(ident2,'rc'));
   all(0:1 %in% delta);
   };
+
+replace_contents.bjw <- function(bjw,data,score,selected1,sync_to=NA){
+  if(!missing(data)){
+    bjw$data <- data;
+    if(!missing(sync_to)) sync_to$data <- data;
+  };
+  if(!missing(score)){
+    bjw$score <- score;
+    if(!missing(sync_to)) sync_to$score <- score;
+  };
+  if(!missing(selected1)){
+    bjw$selected1 <- selected1;
+    if(!missing(sync_to)) sync_to$selected1 <- selected1;
+  };
+  bjw;
+}
 
 select.bjw <- function(bjw,selected2,selected1=bjw$selected1){
   id <- parse_bjw_id(selected2,'id',bjw=bjw);
@@ -48,7 +69,19 @@ select.bjw <- function(bjw,selected2,selected1=bjw$selected1){
   if(!isadjacent_bjw_id(id,bjw=bjw)){bjw$selected1 <-id; return(bjw)};
   # only if none of the above conditions are met, can we swap
   # TODO: only permit swaps that would result in scoring!
-  swap.bjw(selected2, bjw=bjw); bjw$selected1 <- c();
+  # the below lines are not yet tested
+  preswap_snapshot <- bjw$data;
+  swap.bjw(ident2=selected2, bjw=bjw);
+  postswap_result <- match.bjw(bjw,update_bjw =F);
+  if(any(is.na(postswap_result$data))){
+    bjw$data <- postswap_result$data;
+    bjw$score <- postswap_result$score;
+    bjw$selected1 <- c();
+    outerUpdate.bjw(bjw);
+  } else {
+    bjw$data <- preswap_snapshot;
+    message('This swap would not produce any matches. Reverting.')
+  }
   bjw;
 };
 
@@ -107,7 +140,7 @@ match.bjw <- function(bjw,update_bjw=T){
     bjw$data <- nas_xy;
     bjw$score <- score_xy;
     bjw;
-  } else list(score=score,data=data);
+  } else list(score=score_xy,data=nas_xy);
 }
 
 refill.bjw <- function(bjw,refillwith=unique(na.omit(c(bjw$data)))){
@@ -117,12 +150,26 @@ refill.bjw <- function(bjw,refillwith=unique(na.omit(c(bjw$data)))){
   bjw;
 }
 
-plot.bjw <- function(x,...){
-  print(x$score);
-  print(datatable(x$data,colnames = '',options=list(paging=F,searching=F)));
+totalscore.bjw <- function(bjw){with(bjw$score,sum(as.numeric(as.character(length))*Freq))};
+
+
+plot.bjw <- function(x,printscore=F,...){
+  message('current score:',totalscore.bjw(x));
+  rc<-get_rc.bjw(x);
+  out<-x$data;
+  if(!is.null(rc)){
+    out[rc[1],rc[2]] <- sprintf('[%s]',out[rc[1],rc[2]]);
+  } else out[1,1] <- as.character(out[1,1]);
+  print(datatable(out
+                  ,options=list(paging=F,searching=F
+                                ,columnDefs = list(list(targets = '_all'
+                                                        , visible = TRUE
+                                                        , title = ''
+                                                        ,orderable=F))
+                                ,dom='t')
+  ));
 }
 
-totalscore.bjw <- function(bjw){with(bjw$score,sum(as.numeric(as.character(length))*Freq))};
 
 innerUpdate.bjw <- function(bjw,verbose=0){
   converged <- F;
