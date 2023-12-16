@@ -1,0 +1,7 @@
+td.bw_selected1 {
+ border-width: 1px;
+ border-style: solid;
+ border-color: red !important;
+}
+
+td:hover { background-color: yellow;}
