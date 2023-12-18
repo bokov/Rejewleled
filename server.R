@@ -1,49 +1,152 @@
 library(shiny);
 library(DT);
+library(dplyr);
 source('bejewered.R');
 
-# Define server logic required to draw a histogram
+dtbjw_options=list(paging=F,searching=F,dom='t'
+                   ,columnDefs = list(list(targets = '_all',visible = TRUE
+                                           ,title = '',orderable=F)));
+
+
 function(input, output, session) {
   rvbjw <-createBJW(20,8,reactive=T);
+  rvbjw$plotstate <- 'readytomatch';
+  rvbjw$refresh <- 0;
+
+  rvbjw$plotted <- FALSE;
 
   output$bjwdt <- DT::renderDataTable({
-    req(rvbjw$state);
+    #req(rvbjw$state);
     bjwdat <- isolate(rvbjw$data);
+    message('printing update for: ',rvbjw$plotstate);
+    #rvbjw$plotted <- TRUE;
+    rvbjw$obsstate <- rvbjw$plotstate;
     DT::datatable(bjwdat
-                  ,options=list(paging=F,searching=F,dom='t'
-                                ,columnDefs = list(list(targets = '_all'
-                                                        ,visible = TRUE
-                                                        ,title = ''
-                                                        ,orderable=F)))
+                  ,options=dtbjw_options
                   #,selection=list(mode='single',target='cell',selected=cbind(3,3))
-                  ,selection = 'none'
-                  )
-  },server = F);
+                  ,selection = 'none')},server = F);
+
+  observeEvent(rvbjw$refresh,{
+    output$score <- renderText(paste('Score: ',isolate(totalscore.bjw(rvbjw))));
+    if(rvbjw$refresh <= 2) return();
+    #invalidateLater(500,session);
+    #if(!rvbjw$plotted) invalidateLater(1000);
+    #rvbjw$plotted <- FALSE;
+    if(rvbjw$obsstate=='baseline'){
+      if(length(rvbjw$selected1)==1){
+        #runjs("$('.bw_selected1').removeClass('bw_selected1')");
+        selectedrc <- parse_bjw_id(rvbjw$selected1,'rc');
+        setbjwcellclass <- sprintf("$('#bjwdt table.dataTable tbody tr:nth-child(%s) td:nth-child(%s)').addClass('bw_selected1')"
+                                   ,selectedrc[1],selectedrc[2]);
+        runjs(setbjwcellclass);
+      }
+      return();
+    }
+    if(rvbjw$obsstate=='swapped'){
+      selected1rc <- parse_bjw_id(rvbjw$selected1,'rc');
+      selected2rc <- parse_bjw_id(rvbjw$selected2,'rc');
+      setbjwcellclass <- sprintf("$('#bjwdt table.dataTable tbody tr:nth-child(%s) td:nth-child(%s)').addClass('bw_selected1')"
+                                 ,selected1rc[1],selected1rc[2]);
+      runjs(setbjwcellclass);
+      setbjwcellclass <- sprintf("$('#bjwdt table.dataTable tbody tr:nth-child(%s) td:nth-child(%s)').addClass('bw_selected2')"
+                                 ,selected2rc[1],selected2rc[2]);
+      runjs(setbjwcellclass);
+      # try matching
+      postswap_result <- isolate(match.bjw(rvbjw,update_bjw =F));
+      # if match has NAs, readytocompact
+      if(any(is.na(postswap_result$data))){
+        rvbjw$data <- postswap_result$data;
+        rvbjw$score <- postswap_result$score;
+        rvbjw$selected2 <- rvbjw$selected1 <- c();
+        rvbjw$plotstate <- 'readytocompact';
+      } else {
+        rvbjw$data <- rvbjw$preswap_data;
+        rvbjw$selected2 <- rvbjw$preswap_data <- NULL;
+        rvbjw$plotstate <- 'baseline';
+      };
+      return();
+    };
+    nas<-which(is.na(rvbjw$data),arr.ind = T);
+    #runjs("$('.bw_selected1').removeClass('bw_selected1')");
+    apply(nas,1,function(xx) runjs(sprintf("$('#bjwdt table.dataTable tbody tr:nth-child(%s) td:nth-child(%s)').addClass('bw_filled')",xx[1],xx[2])));
+    if(rvbjw$obsstate=='readytomatch'){
+      if(any(is.na(isolate(match.bjw(rvbjw)$data)))){
+        rvbjw$plotstate <- 'readytocompact';
+      } else {
+        rvbjw$plotstate <- 'baseline'; return();
+      }
+    } else if(rvbjw$obsstate=='readytocompact'){
+      pre_compact_data <- isolate(rvbjw$data);
+      post_compact_data <- isolate(compact.bjw(rvbjw)$data);
+      if(!identical(post_compact_data,pre_compact_data)){
+        rvbjw$plotstate <- 'readytomatch'; return();
+      } else if(any(is.na(post_compact_data))) {
+        rvbjw$plotstate <- 'readytofill'; return();
+      } else {
+        rvbjw$plotstate <- 'baseline'; return();
+      }
+    } else if(rvbjw$obsstate == 'readytofill'){
+      isolate(refill.bjw(rvbjw));
+      rvbjw$plotstate <- 'readytomatch'; return();
+    }
+  });
 
   observeEvent(input$bjwdt_cell_clicked,{
+    if(isolate(rvbjw$state=='readytocheck')) return();
     clicked <-input$bjwdt_cell_clicked;
-    runjs("$('.bw_selected1').removeClass('bw_selected1')");
-    if(length(clicked)>0){
+    if(length(clicked)==0) return();
+    clicked <- with(clicked,isolate(parse_bjw_id(c(row,col+1),bjw=rvbjw)));
+    #id <- isolate(parse_bjw_id(c(clicked$row,clicked$col+1),'id',bjw=rvbjw));
+    selectedid <- isolate(rvbjw$selected1);
+    if(identical(selectedid,clicked$id)){
+      rvbjw$selected1 <- c();
+      runjs("$('.bw_selected1').removeClass('bw_selected1')");
+      return();
+    } else if(length(selectedid)==0||isolate(!isadjacent_bjw_id(clicked$id,bjw=rvbjw))){
+      rvbjw$selected1 <- clicked$id;
+      runjs("$('.bw_selected1').removeClass('bw_selected2')");
+      runjs("$('.bw_selected1').removeClass('bw_selected1')");
       setbjwcellclass <- sprintf("$('#bjwdt table.dataTable tbody tr:nth-child(%s) td:nth-child(%s)').addClass('bw_selected1')"
-                        ,clicked$row,clicked$col+1);
+                                 ,clicked$rc[1],clicked$rc[2]);
       runjs(setbjwcellclass);
+      return();
+    } else if(isolate(isadjacent_bjw_id(clicked$id,bjw=rvbjw))){
+      message('swapping ',clicked$id,' and ',selectedid);
+      selectedrc <- parse_bjw_id(selectedid,'rc');
+      rvbjw$preswap_data <- isolate(rvbjw$data);
+      setbjwcellclass <- sprintf("$('#bjwdt table.dataTable tbody tr:nth-child(%s) td:nth-child(%s)').addClass('bw_selected2')"
+                                 ,clicked$rc[1],clicked$rc[2]);
+      runjs(setbjwcellclass);
+      setbjwcellclass <- sprintf("$('#bjwdt table.dataTable tbody tr:nth-child(%s) td:nth-child(%s)').addClass('bw_selected1')"
+                                 ,selectedrc[1],selectedrc[2]);
+      runjs(setbjwcellclass);
+      isolate(swap.bjw(rvbjw,clicked$id));
+      rvbjw$selected2 <- clicked$id;
+      rvbjw$plotstate <- 'swapped';
+      return();
+      # output$bjwdt <- DT::renderDataTable({
+      #   DT::datatable(postswap_data,dtbjw_options,selection = 'none')},server = F);
+      # postswap_result <- isolate(match.bjw(rvbjw,update_bjw =F));
+      #   rvbjw$state <- 'swapattempt';
     }
     # TODO: looks like we can manage first and likely second selection via JS
     #       so the DT needs to only be re-drawn when the contents of cells
     #       change. Adapt the below to reactive envrionment accordingly. Also,
     #       will likely not need to use while loops... rather, run every step
     #       once conditional on value of bjwdf$state
-    # # if there is no bjw$selected1 that means this is the first half of a paired
-    # # selection, so update accordingly and return
-    # if(length(selected1)==0){bjw$selected1 <-id; return(bjw)};
-    # # if the selection is repeated that's a signal to cancel the selection, select
-    # # nothing
-    # if(selected1 == id) {bjw$selected1 <- c(); return(bjw)};
-    # # if the selection is not adjacent, that's a signal to select the new cell
-    # # instead as the first half of the selection
-    # if(!isadjacent_bjw_id(id,bjw=bjw)){bjw$selected1 <-id; return(bjw)};
     # # only if none of the above conditions are met, can we swap
   })
+
+  observe({
+    invalidateLater(50, session);  # Invalidate and re-trigger after 500 milliseconds (0.5 seconds)
+    rvbjw$refresh <- isolate(rvbjw$refresh + 1);
+    output$debugoutput <- renderText({
+      paste(Sys.time(),': plotstate=',rvbjw$plotstate,', obsstate=',rvbjw$obsstate,'
+            , selected1=',rvbjw$selected1,', selected2=',coalesce(rvbjw$selected2,'NULL'))
+    });
+    #runjs("$('#step').click()");
+  })
+
 
   observeEvent(input$debug,browser());
 }

@@ -5,7 +5,7 @@ createBJW <- function(nr=sample(3:8,1),nc=sample(3:8,1)
   out <- if(reactive) reactiveValues() else new.env();
   out$data <- matrix(colors,nr,nc);
   out$selected1 <- c();
-  out$state <- '0sel';
+  out$state <- 'readytomatch';
   out$score <- data.frame(length=factor(),type=factor(),Freq=integer(),rc=character());
   if(!reactive) class(out) <- c('bjw','list','environment');
   out;
@@ -15,9 +15,16 @@ parse_bjw_id <- function(identifier=bjw$selected1,retval=c('both','rc','id')
                        ,prefix=getOption('bjw.cell.prefix','bjwtd_')
                          ,bjw=NA,rcmax){
   out <- list();
-  if(missing(rcmax)) rcmax <- if(!is(bjw,'bjw')) c(8,8) else dim(bjw$data);
+  if(missing(rcmax)){
+    rcmax <- if(is(bjw,'bjw')) {
+      dim(bjw$data);
+    } else if(is(bjw,'reactivevalues')) {
+      isolate(dim(bjw$data));
+    } else c(8,8);
+
+  } #rcmax <- if(any(class(bjw) %in% c('bjw','reactivevalues'))) c(8,8) else dim(bjw$data);
   if(is.numeric(identifier) && length(identifier) == 2){
-    out<-list(rc=identifier,id=paste0(prefix,row,'_',col));
+    out<-list(rc=identifier,id=paste0(prefix,identifier[1],'_',identifier[2]));
   } else if(is.character(identifier) && length(identifier) == 1 &&
             grepl('.*_[0-9]*_[0-9]*$',identifier)){
     out<-list(rc=gsub('^[^_]*_','',identifier) %>% strsplit('_') %>% unlist %>%

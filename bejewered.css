@@ -4,4 +4,12 @@ td.bw_selected1 {
  border-color: red !important;
 }
 
+td.bw_selected2 {
+ border-width: 1px;
+ border-style: solid;
+ border-color: green !important;
+}
+
+td.bw_filled { background-color: lavender ;}
+
 td:hover { background-color: yellow;}

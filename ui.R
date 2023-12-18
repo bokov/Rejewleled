@@ -6,11 +6,6 @@ fluidPage(
     useShinyjs(),
     # head
     tags$head(
-      tags$script(HTML("
-              Shiny.addCustomMessageHandler('addCellClass', function(message) {
-                  eval(message);
-              });
-          ")),
       tags$link(rel = "stylesheet", type = "text/css", href = "bejewered.css")
     ),
     # Application title
@@ -18,7 +13,11 @@ fluidPage(
 
     # Sidebar with a slider input for number of bins
     sidebarLayout(
-        sidebarPanel(actionButton('debug','debug')),
+        sidebarPanel(
+          actionButton('debug','debug'),
+          textOutput('score'),
+          textOutput('debugoutput')
+          ),
 
         # Show a plot of the generated distribution
         mainPanel(DT::dataTableOutput('bjwdt'))
