@@ -1,3 +1,4 @@
+# header ----
 library(shiny);
 library(DT);
 library(dplyr);
@@ -6,12 +7,13 @@ source('bejewered.R');
 dtbjw_options=list(paging=F,searching=F,dom='t',columnDefs = list(
   list(targets = '_all',visible = TRUE,title = '',orderable=F)));
 
-
+# server ----
 function(input, output, session) {
   rvbjw <-createBJW(20,8,reactive=T);
   rvbjw$plotstate <- 'readytomatch';
   rvbjw$refresh <- 0;
 
+  # renderDataTable ----
   output$bjwdt <- DT::renderDataTable({
       bjwdat <- isolate(rvbjw$data);
       message('printing update for: ',rvbjw$plotstate);
@@ -19,6 +21,7 @@ function(input, output, session) {
       DT::datatable(bjwdat,options=dtbjw_options,selection = 'none')
     },server = F);
 
+  # refresh triggered ----
   observeEvent(rvbjw$refresh, {
     output$score <- renderText(paste('Score: ', totalscore.bjw(rvbjw)))
     if(rvbjw$refresh <= 2) return()
@@ -74,6 +77,7 @@ function(input, output, session) {
     }
   })
 
+  # cell clicked ----
   observeEvent(input$bjwdt_cell_clicked,{
     if(isolate(rvbjw$state=='readytocheck')) return();
     clicked <-input$bjwdt_cell_clicked;
@@ -109,6 +113,7 @@ function(input, output, session) {
     }
   })
 
+  # heartbeat ----
   observe({
     invalidateLater(50, session);  # Invalidate and re-trigger after 500 milliseconds (0.5 seconds)
     rvbjw$refresh <- isolate(rvbjw$refresh + 1);
@@ -118,6 +123,6 @@ function(input, output, session) {
     });
   })
 
-
+  # debug button ----
   observeEvent(input$debug,browser());
 }
