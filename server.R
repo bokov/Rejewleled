@@ -2,23 +2,31 @@
 library(shiny);
 library(DT);
 library(dplyr);
+library(fontawesome);
 source('bejewered.R');
 
-dtbjw_options=list(paging=F,searching=F,dom='t',columnDefs = list(
+dtbjw_options=list(paging=F,scrollX=F,scrollY='80vh',searching=F,dom='t',autoWidth=T,columnDefs = list(
   list(targets = '_all',visible = TRUE,title = '',orderable=F)));
 
 # server ----
 function(input, output, session) {
-  rvbjw <-createBJW(20,8,reactive=T);
+  cellmapping <- sprintf("<span class='bjw_col%03d'>%s</span>"
+                         ,sample(1:100,100,rep=T)
+                         ,sample(fa_metadata()$icon_names,100) %>% sapply(fa)) %>%
+    mapply(function(aa,bb) substitute(aa~bb,list(aa=aa,bb=bb)),seq_along(.),.);
+
+  rvbjw <-createBJW(20,10,reactive=T);
   rvbjw$plotstate <- 'readytomatch';
   rvbjw$refresh <- 0;
 
   # renderDataTable ----
   output$bjwdt <- DT::renderDataTable({
       bjwdat <- isolate(rvbjw$data);
+      bjwdat[] <- case_match(c(bjwdat),!!!cellmapping);
       message('printing update for: ',rvbjw$plotstate);
       rvbjw$obsstate <- rvbjw$plotstate;
-      DT::datatable(bjwdat,options=dtbjw_options,selection = 'none')
+      DT::datatable(bjwdat,escape=F,options=dtbjw_options,selection = 'none'
+                    ,class=c('cell-border','compact','hover'));
     },server = F);
 
   # refresh triggered ----
@@ -115,7 +123,7 @@ function(input, output, session) {
 
   # heartbeat ----
   observe({
-    invalidateLater(50, session);  # Invalidate and re-trigger after 500 milliseconds (0.5 seconds)
+    invalidateLater(10, session);  # Invalidate and re-trigger after 500 milliseconds (0.5 seconds)
     rvbjw$refresh <- isolate(rvbjw$refresh + 1);
     output$debugoutput <- renderText({
       paste(Sys.time(),': plotstate=',rvbjw$plotstate,', obsstate=',rvbjw$obsstate,'
