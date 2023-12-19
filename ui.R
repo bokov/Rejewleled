@@ -1,25 +1,17 @@
 library(shiny);
 library(shinyjs);
+library(bslib);
 
 # Define UI for application that draws a histogram
-fluidPage(
+fillPage(
+    title='BejeweRed',theme=bs_theme(bootswatch='quartz'),padding=c('0','10vw'),
     useShinyjs(),
     # head
     tags$head(
       tags$link(rel = "stylesheet", type = "text/css", href = "bejewered.css")
     ),
-    # Application title
-    titlePanel("Bejewered"),
-
-    # Sidebar with a slider input for number of bins
-    sidebarLayout(
-        sidebarPanel(
-          actionButton('debug','debug'),
-          textOutput('score'),
-          textOutput('debugoutput')
-          ),
-
-        # Show a plot of the generated distribution
-        mainPanel(DT::dataTableOutput('bjwdt'))
-    )
+    DT::dataTableOutput('bjwdt',width = '20vw'),
+    textOutput('score'),
+    actionButton('debug','debug'),
+    textOutput('debugoutput')
 )
