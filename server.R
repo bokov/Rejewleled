@@ -5,7 +5,7 @@ library(dplyr);
 library(fontawesome);
 source('bejewered.R');
 
-dtbjw_options=list(paging=F,scrollX=F,scrollY='80vh',searching=F,dom='t',autoWidth=T,columnDefs = list(
+dtbjw_options=list(paging=F,scrollX=T,scrollY='80vh',searching=F,dom='t',autoWidth=T,columnDefs = list(
   list(targets = '_all',visible = TRUE,title = '',orderable=F)));
 
 # server ----

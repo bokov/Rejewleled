@@ -99,6 +99,10 @@
 .bjw_col099 {color: #FF001F;}
 .bjw_col100 {color: #FF000F;}
 
+td {width: 1vw;
+    max-width: 1vw;
+    overflow: hidden;}
+
 tr {background-color: transparent !important;}
 
 td.bw_selected1 {
