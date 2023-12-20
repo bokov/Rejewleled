@@ -4,7 +4,7 @@ library(bslib);
 
 # Define UI for application that draws a histogram
 fillPage(
-    title='BejeweRed',theme=bs_theme(bootswatch='quartz'), padding=c('0','1vw'),
+    title='BejeweRed',theme=bs_theme(bootswatch='quartz'), padding=c('1vw','1vw'),
     useShinyjs(),
     # head
     tags$head(

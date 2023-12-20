@@ -103,7 +103,9 @@ td {width: 1vw;
     max-width: 1vw;
     overflow: hidden;}
 
-tr {background-color: transparent !important;}
+tr {
+  background-color: transparent !important;
+}
 
 td.bw_selected1 {
  border-width: 1px;
