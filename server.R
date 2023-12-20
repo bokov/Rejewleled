@@ -125,12 +125,12 @@ function(input, output, session) {
   observe({
     invalidateLater(10, session);  # Invalidate and re-trigger after 500 milliseconds (0.5 seconds)
     rvbjw$refresh <- isolate(rvbjw$refresh + 1);
-    output$debugoutput <- renderText({
+    output$debugoutput <- renderText(if(file.exists('debug')){
       paste(Sys.time(),': plotstate=',rvbjw$plotstate,', obsstate=',rvbjw$obsstate,'
             , selected1=',rvbjw$selected1,', selected2=',coalesce(rvbjw$selected2,'NULL'))
     });
   })
 
   # debug button ----
-  observeEvent(input$debug,browser());
+  observeEvent(input$debug,if(file.exists('debug')) browser());
 }
