@@ -13,9 +13,10 @@ function(input, output, session) {
   cellmapping <- sprintf("<span class='bjw_col%03d'>%s</span>"
                          ,sample(1:100,100,rep=T)
                          ,sample(fa_metadata()$icon_names,100) %>% sapply(fa)) %>%
-    mapply(function(aa,bb) substitute(aa~bb,list(aa=aa,bb=bb)),seq_along(.),.);
+    mapply(function(aa,bb) substitute(aa~bb,list(aa=aa,bb=bb)),seq_along(.),.) %>%
+    c(NA ~ "<span class='bjw_empty'>&nbsp;</span>");
 
-  rvbjw <-createBJW(20,10,reactive=T);
+  rvbjw <-createBJW(sample(5:20,1),sample(5:20,1),reactive=T);
   rvbjw$plotstate <- 'readytomatch';
   rvbjw$refresh <- 0;
 
