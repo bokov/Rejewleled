@@ -1,7 +1,8 @@
 # functions ----
 
 createBJW <- function(nr=sample(3:8,1),nc=sample(3:8,1)
-                      ,colors=sample(1:4,nr*nc,rep=T),reactive=F){
+                      ,ncolors=sample(4:10,1),reactive=F){
+  colors <- sample(1:ncolors,nr*nc,rep=T);
   out <- if(reactive) reactiveValues() else new.env();
   out$data <- matrix(colors,nr,nc);
   out$selected1 <- c();
