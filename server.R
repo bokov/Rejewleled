@@ -8,13 +8,31 @@ source('bejewered.R');
 dtbjw_options=list(paging=F,scrollX=T,scrollY='80vh',searching=F,dom='t',autoWidth=T,columnDefs = list(
   list(targets = '_all',visible = TRUE,title = '',orderable=F)));
 
+cell_styles <- list(
+  list(1, 1, 3),  # Cell at row 1, column 1, with 3px border
+  list(2, 2, 5)   # Cell at row 2, column 2, with 5px border
+  # Add more as needed
+);
+
+# dtbjw_options$callback <- JS(
+#   "function(settings) {",
+#   "console.log('foo');",
+#   "window.myDataTableSettings = settings; // Assign to a global variable",
+#   #"$('#bjwdt table.dataTable tbody tr:nth-child(3) td:nth-child(3)').css('border','5px solid black')"
+#   # "  var table = this.api().table();",sapply(cell_styles, function(style) {
+#   #   sprintf("table.cell(%d, %d).node().style.border = '%dpx solid black';",
+#   #           style[[1]] - 1, style[[2]] - 1, style[[3]])  # Indices are 0-based in JS
+#   # })
+#   "}");
+
+
 # server ----
 function(input, output, session) {
-  cellmapping <- sprintf("<span class='bjw_col%03d'>%s</span>"
+  cellmapping <- sprintf("<div class='bjw_col%03d'>%s</div>"
                          ,sample(1:100,100,rep=T)
                          ,sample(fa_metadata()$icon_names,100) %>% sapply(fa)) %>%
     mapply(function(aa,bb) substitute(aa~bb,list(aa=aa,bb=bb)),seq_along(.),.) %>%
-    c(NA ~ "<span class='bjw_empty'>&nbsp;</span>");
+    c(NA ~ "<div class='bjw_empty'>&nbsp;</div>");
 
   rvbjw <-createBJW(sample(5:20,1),sample(5:20,1),reactive=T);
   rvbjw$plotstate <- 'readytomatch';
@@ -24,8 +42,11 @@ function(input, output, session) {
   output$bjwdt <- DT::renderDataTable({
       bjwdat <- isolate(rvbjw$data);
       bjwdat[] <- case_match(c(bjwdat),!!!cellmapping);
-      message('printing update for: ',rvbjw$plotstate);
+      bjwgb <- isolate(rvbjw$gameboard);
+      bjwdat[bjwgb>1] <- bjwdat[bjwgb>1] %>% gsub('div class=','div style="border: %dpx solid black" class=',.) %>% sprintf(bjwgb[bjwgb>1]);
+      if(file.exists('debug')) message('printing update for: ',rvbjw$plotstate);
       rvbjw$obsstate <- rvbjw$plotstate;
+      #browser();
       DT::datatable(bjwdat,escape=F,options=dtbjw_options,selection = 'none'
                     ,class=c('cell-border','compact','hover'));
     },server = F);

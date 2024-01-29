@@ -1,14 +1,18 @@
 # functions ----
 
 createBJW <- function(nr=sample(3:8,1),nc=sample(3:8,1)
-                      ,ncolors=sample(4:10,1),reactive=F){
+                      ,ncolors=sample(4:10,1),nboxed=sample(0:nc*nr*0.5,1),reactive=F){
   colors <- sample(1:ncolors,nr*nc,rep=T);
-  out <- if(reactive) reactiveValues() else new.env();
+  out <- if(reactive) list() else new.env();
   out$data <- matrix(colors,nr,nc);
+  boxed <- sample(seq_along(out$data),nboxed);
+  out$gameboard <- apply(out$data,1:2,function(xx) 1);
+out$gameboard[boxed] <- sample(2:5,nboxed,rep=T);
   out$selected1 <- c();
   out$state <- 'readytomatch';
   out$score <- data.frame(length=factor(),type=factor(),Freq=integer(),rc=character());
-  if(!reactive) class(out) <- c('bjw','list','environment');
+  if(reactive) out <- reactiveValues(!!!out) else {
+    class(out) <- c('bjw','list','environment')};
   out;
 }
 
@@ -121,6 +125,13 @@ compact.bjw <- function(bjw){
   bjw;
 }
 
+# TODO: When analyzing a row/column also check bjw$gameboard for values > 1
+#       Those values should be diminished by 1 up to a minimum of 1 every time
+#       that cell in bjw$data would be eliminated due to matching. Also, the
+#       cells in bjw$data should only be replaced with pmax(nas_x,nas_y)[bjw$gameboard==1]
+#       In other words, those cells are protected and their contents won't be
+#       removed until they are worn down to 1
+
 row_bjw_analyze <- function(xx){
   scoretemplate <- data.frame(length=factor(),type=factor(),Freq=integer());
   rl <- rle(xx);
@@ -129,7 +140,7 @@ row_bjw_analyze <- function(xx){
                   as.data.frame() %>% rbind(scoretemplate,.));
   rl$values[idx] <- NA;
   return(list(score=score,resultrow=inverse.rle(rl)));
-}
+};
 
 match.bjw <- function(bjw,update_bjw=T){
   # for each row, look for runs of 3, 4, 5, etc.
